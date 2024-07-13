@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat with AI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    .chat-box {
+      width: 50%;
+      margin: 0 auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      margin-top: 50px;
+      background-color: #f9f9f9;
+    }
+    .chat-log {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    }
+    .chat-log p {
+      margin: 5px 0;
+    }
+    .input-box {
+      display: flex;
+    }
+    .input-box input[type="text"] {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .input-box button {
+      padding: 10px;
+      border: none;
+      background-color: #007BFF;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .input-box button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+    .upload-box {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-box">
+    <div class="chat-log" id="chat-log"></div>
+    <div class="input-box">
+      <input type="text" id="user-input" placeholder="Type your message here...">
+      <button id="send-button" onclick="sendMessage()">Send</button>
+    </div>
+	<br>
+	<div>
+	Upload pdf file
+	</div>
+    <div class="upload-box">
+      <input type="file" id="file-input">
+      <button id="upload-button" onclick="uploadFile()">Upload</button>
+    </div>
+  </div>
+
+  <script>
+    function appendMessage(sender, message) {
+      const chatLog = document.getElementById('chat-log');
+      const messageElement = document.createElement('p');
+      messageElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
+      chatLog.appendChild(messageElement);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const userInput = document.getElementById('user-input');
+      const sendButton = document.getElementById('send-button');
+
+      const message = userInput.value.trim();
+      if (!message) {
+        return;
+      }
+
+      appendMessage('You', message);
+
+      // Disable input and button before sending request
+      userInput.disabled = true;
+      sendButton.disabled = true;
+
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ input: message })
+        });
+		const data = await response.json();
+		console.log(data)
+		 // Extracting and displaying the answer part
+				const answer = data.answer;
+				
+				if (answer) {
+					console.log(answer)
+				  appendMessage('AI', answer);
+				} else {
+				  appendMessage('AI', 'No answer received.');
+				  console.log(data.answer)
+				}
+			  } catch (error) {
+				appendMessage('Error', 'Failed to get response from server.');
+				console.log(data.answer)
+			  } finally {
+				// Re-enable input and button after receiving response (or error)
+				userInput.disabled = false;
+				sendButton.disabled = false;
+			  }
+      // Clear input field and focus
+      userInput.value = '';
+      userInput.focus();
+    }
+
+    async function uploadFile() {
+      const fileInput = document.getElementById('file-input');
+      const file = fileInput.files[0];
+      if (!file) {
+        appendMessage('Error', 'No file selected.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        appendMessage('Server', data.message);
+      } catch (error) {
+        appendMessage('Error', 'Failed to upload file.');
+      }
+    }
+
+    document.getElementById('user-input').addEventListener('keypress', function (e) {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html>
