@@ -1,5 +1,6 @@
 import os
 import uuid
+import subprocess
 import chromadb
 from flask import Flask, request, render_template, jsonify
 from chromadb.db.base import UniqueConstraintError
@@ -16,10 +17,7 @@ text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=1024, chunk_overlap=80, length_function=len, is_separator_regex=False
 )
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
+# Initialize ChromaDB client and collection
 folder_path = 'db'
 chroma_client = chromadb.PersistentClient(path=folder_path)
 
@@ -29,6 +27,10 @@ try:
 except UniqueConstraintError:
     # Collection already exists, so retrieve it instead
     collection = chroma_client.get_collection(name="my_collection1")
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -58,7 +60,6 @@ def upload():
         ids = [str(uuid.uuid4()) for _ in chunk_texts]
         
         collection.add(documents=chunk_texts, ids=ids, metadatas=[{"source": filename}] * len(chunk_texts))
-                # Check if embeddings are generated
 
         added_documents = collection.get(ids=ids)
 
@@ -69,19 +70,62 @@ def upload():
         print(f"Error processing file: {e}")
         return jsonify({'message': f'Error processing file: {e}'}), 500
 
+@app.route('/scanned', methods=['POST'])
+def scanned():
+    if 'file' not in request.files:
+        return jsonify({'message': 'No file part in the request'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'message': 'No file selected for uploading'}), 400
+    
+    filename = file.filename
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(filepath)
+    print(f"File saved to: {filepath}")
+
+    # Perform OCR using Tesseract
+    temp_output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_output')
+    print(temp_output_path)
+
+    try:
+        # Run Tesseract OCR
+        
+        subprocess.run(['tesseract', filepath, temp_output_path, 'txt'], check=True)
+        # Read the OCR output
+        with open(temp_output_path + '.txt', 'r', encoding='utf-8') as f:
+            ocr_text = f.read()
+        
+        # Add OCR text to collection
+        collection.add(documents=[ocr_text], ids=[str(uuid.uuid4())], metadatas=[{"source": filename}])
+        
+        return jsonify({'message': 'OCR completed and text added to collection successfully'})
+    
+    except subprocess.CalledProcessError as e:
+        print(f"Error running Tesseract: {e}")
+        return jsonify({'message': 'Error processing OCR.'}), 500
+    except Exception as e:
+        print(f"Error processing file: {e}")
+        return jsonify({'message': f'Error processing file: {e}'}), 500
+    finally:
+        # Clean up temporary files if necessary
+        if os.path.exists(temp_output_path + '.txt'):
+            os.remove(temp_output_path + '.txt')
+        if os.path.exists(temp_output_path + '.hocr'):
+            os.remove(temp_output_path + '.hocr')
+
 @app.route('/query', methods=['POST'])
 def query():
     try:
         data = request.get_json()
         query_text = data.get("query_text", "")
         
-        
         if not query_text:
             return jsonify({'message': 'Query text is required'}), 400
         
         results = collection.query(
             query_texts=[query_text],
-            
         )
         
         return jsonify(results)
