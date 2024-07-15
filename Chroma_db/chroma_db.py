@@ -74,14 +74,14 @@ def query():
     try:
         data = request.get_json()
         query_text = data.get("query_text", "")
-        n_results = data.get("n_results", 2)
+        
         
         if not query_text:
             return jsonify({'message': 'Query text is required'}), 400
         
         results = collection.query(
             query_texts=[query_text],
-            n_results=n_results
+            
         )
         
         return jsonify(results)
