@@ -1,5 +1,4 @@
 """Utilities for chat loaders."""
-
 from copy import deepcopy
 from typing import Iterable, Iterator, List
 

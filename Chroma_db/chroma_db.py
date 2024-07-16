@@ -32,7 +32,7 @@ except UniqueConstraintError:
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('chroma_db.html')
 
 @app.route('/upload', methods=['POST'])
 def upload():

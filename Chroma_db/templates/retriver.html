@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Upload and Query</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+        }
+        h1 {
+            text-align: center;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        .result {
+            margin-top: 20px;
+        }
+        .document {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        pre {
+            white-space: pre-wrap; /* Make sure preformatted text wraps */
+            word-wrap: break-word; /* Prevent overflow */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF Upload and Query</h1>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <label for="file">Choose a PDF file to upload:</label>
+            <input type="file" id="file" name="file" accept="application/pdf">
+            <button type="submit">Upload</button>
+        </form>
+        
+        <form id="ocrForm" enctype="multipart/form-data">
+            <label for="ocrFile">Choose an image file for OCR:</label>
+            <input type="file" id="ocrFile" name="ocrFile" accept="image/*">
+            <button type="submit">OCR Scan</button>
+        </form>
+        
+        <form id="queryForm">
+            <label for="query_text">Enter query text:</label>
+            <input type="text" id="query_text" name="query_text" required>
+            <button type="submit">Query</button>
+        </form>
+        
+        <div class="result" id="result"></div>
+    </div>
+    
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const formData = new FormData();
+            const fileInput = document.getElementById('file');
+            if (fileInput.files.length === 0) {
+                alert('Please select a file to upload.');
+                return;
+            }
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                alert(result.message);
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                alert('Error uploading file.');
+            }
+        });
+
+        document.getElementById('ocrForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const formData = new FormData();
+            const fileInput = document.getElementById('ocrFile');
+            if (fileInput.files.length === 0) {
+                alert('Please select an image file for OCR.');
+                return;
+            }
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/scanned', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                alert(result.message);
+            } catch (error) {
+                console.error('Error scanning OCR:', error);
+                alert('Error scanning OCR.');
+            }
+        });
+
+        document.getElementById('queryForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const queryText = document.getElementById('query_text').value;
+            const payload = { query_text: queryText };
+            
+            try {
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                displayResults(result);
+            } catch (error) {
+                console.error('Error querying collection:', error);
+                alert('Error querying collection.');
+            }
+        });
+
+        function displayResults(result) {
+            console.log(result);
+            const resultContainer = document.getElementById('result');
+            resultContainer.innerHTML = ''; // Clear previous results
+
+            if (!result.results || result.results.length === 0) {
+                resultContainer.innerHTML = '<p>No results found.</p>';
+                return;
+            }
+
+            result.results.forEach((documentText, index) => {
+                const docContainer = document.createElement('div');
+                docContainer.classList.add('document');
+
+                const docTitle = document.createElement('h3');
+                docTitle.textContent = `Document ${index + 1}`;
+                docContainer.appendChild(docTitle);
+
+                const docText = document.createElement('pre');
+                docText.textContent = documentText;
+                docContainer.appendChild(docText);
+
+                resultContainer.appendChild(docContainer);
+            });
+        }
+    </script>
+</body>
+</html>
