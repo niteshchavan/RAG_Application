@@ -28,6 +28,8 @@ except UniqueConstraintError:
     # Collection already exists, so retrieve it instead
     collection = chroma_client.get_collection(name="my_collection1")
 
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
