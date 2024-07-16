@@ -89,7 +89,7 @@ def query():
             seller_name = "Sample Seller"  # Replace with actual extraction logic
             invoice_number = "INV-001"  # Replace with actual extraction logic
             total_amount = "$1000"  # Replace with actual extraction logic
-            
+              
             results.append({
                 "seller_name": seller_name,
                 "invoice_number": invoice_number,
